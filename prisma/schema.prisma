@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  STAFF
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum QueueEntryType {
+  APPOINTMENT
+  WALK_IN
+}
+
+enum QueueStatus {
+  WAITING
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         Role     @default(PATIENT)
+  clinicId     String?  @db.ObjectId
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  clinic       Clinic?       @relation("ClinicStaff", fields: [clinicId], references: [id])
+  ownedClinics Clinic[]      @relation("ClinicAdmin")
+  appointments Appointment[]
+  queueEntries QueueEntry[]
+}
+
+model Clinic {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  address     String
+  city        String
+  phone       String
+  email       String?
+  specialties String[]
+  openingTime String   @default("09:00")
+  closingTime String   @default("18:00")
+  adminId     String   @db.ObjectId
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  admin        User          @relation("ClinicAdmin", fields: [adminId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  staff        User[]        @relation("ClinicStaff")
+  doctors      Doctor[]
+  appointments Appointment[]
+  queueEntries QueueEntry[]
+  counters     TokenCounter[]
+}
+
+model Doctor {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  clinicId          String   @db.ObjectId
+  name              String
+  specialty         String
+  qualification     String?
+  bio               String?
+  avgConsultMinutes Int      @default(10)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  clinic       Clinic           @relation(fields: [clinicId], references: [id])
+  schedules    DoctorSchedule[]
+  appointments Appointment[]
+  queueEntries QueueEntry[]
+}
+
+model DoctorSchedule {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId    String  @db.ObjectId
+  dayOfWeek   Int
+  startTime   String
+  endTime     String
+  slotMinutes Int     @default(15)
+  isActive    Boolean @default(true)
+
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+
+  @@unique([doctorId, dayOfWeek, startTime])
+}
+
+model Appointment {
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  clinicId  String            @db.ObjectId
+  doctorId  String            @db.ObjectId
+  patientId String            @db.ObjectId
+  dateTime  DateTime
+  day       String
+  status    AppointmentStatus @default(BOOKED)
+  reason    String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  clinic       Clinic       @relation(fields: [clinicId], references: [id])
+  doctor       Doctor       @relation(fields: [doctorId], references: [id])
+  patient      User         @relation(fields: [patientId], references: [id])
+  queueEntries QueueEntry[]
+}
+
+model QueueEntry {
+  id                   String          @id @default(auto()) @map("_id") @db.ObjectId
+  clinicId             String          @db.ObjectId
+  doctorId             String          @db.ObjectId
+  patientId            String?         @db.ObjectId
+  appointmentId        String?         @db.ObjectId
+  patientName          String
+  patientPhone         String?
+  type                 QueueEntryType
+  status               QueueStatus     @default(WAITING)
+  tokenNumber          Int
+  tokenCode            String
+  day                  String
+  estimatedWaitMinutes Int             @default(0)
+  joinedAt             DateTime        @default(now())
+  startedAt            DateTime?
+  completedAt          DateTime?
+  updatedAt            DateTime        @updatedAt
+
+  clinic      Clinic       @relation(fields: [clinicId], references: [id])
+  doctor      Doctor       @relation(fields: [doctorId], references: [id])
+  patient     User?        @relation(fields: [patientId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([clinicId, day, status])
+  @@index([patientId, status])
+  @@index([doctorId, day])
+}
+
+model TokenCounter {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  clinicId  String @db.ObjectId
+  day       String
+  lastToken Int    @default(0)
+
+  clinic Clinic @relation(fields: [clinicId], references: [id])
+
+  @@unique([clinicId, day])
+}
