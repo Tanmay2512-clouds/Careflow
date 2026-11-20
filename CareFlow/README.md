@@ -33,6 +33,7 @@ The patient and staff interfaces refresh active visit and queue data automatical
 - Next.js 16 App Router and React 19
 - TypeScript
 - Next.js Route Handlers (REST API)
+- Vercel Analytics for page views
 - Prisma ORM and MongoDB Atlas
 - bcrypt password hashing and signed, HTTP-only session cookies
 - CSS with Tailwind CSS 4 tooling
@@ -137,7 +138,7 @@ Write operations require authentication. Staff operations are scoped to the staf
 
 ## Deployment
 
-Deploy the Next.js application to a Next.js-compatible host such as Vercel. Set `DATABASE_URL` and a strong `AUTH_SECRET` in the deployment environment, and configure MongoDB Atlas network access for the deployed application. Do not expose server environment variables in client-side code.
+Deploy the Next.js application to a Next.js-compatible host such as Vercel. Set `DATABASE_URL` and a strong `AUTH_SECRET` in the deployment environment, and configure MongoDB Atlas network access for the deployed application. Vercel Analytics is mounted in the root layout; deploy the app to Vercel and enable Analytics in the project dashboard to collect page views. Do not expose server environment variables in client-side code.
 
 This repository does not include a separate Render/Express service or automated deployment pipeline.
 
